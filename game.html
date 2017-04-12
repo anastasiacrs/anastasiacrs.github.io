@@ -2,16 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Game Ball</title>
-    <script src="keyboard.js"></script>
-    <script src="vector.js"></script>
-    <script src="ball.js"></script>
-    <script src="player.js"></script>
-    <script src="net.js"></script>
-    <script src="point.js"></script>
-    <script src="wave.js"></script>
-    <script src="wave_config.js"></script>
-    <script src="constants.js"></script>
+    <title>Volleyball</title>
+    <script src="js/lib/keyboard.js"></script>
+    <script src="js/component/vector.js"></script>
+    <script src="js/component/ball.js"></script>
+    <script src="js/component/player.js"></script>
+    <script src="js/component/net.js"></script>
+    <script src="js/point.js"></script>
+    <script src="js/background/wave.js"></script>
+    <script src="js/background/wave_config.js"></script>
+    <script src="js/constants.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="css/general.css"/>
+
+    <link href="https://fonts.googleapis.com/css?family=Press+Start+2P" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata" rel="stylesheet">
 
 </head>
 <body>
@@ -19,110 +24,99 @@
 <style>
     canvas {
         border: 1px solid black;
-        /*===========================================================================*/
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translateX(-50%) translateY(-50%);
-        /*===========================================================================*/
     }
 </style>
 
-<canvas id="can" ></canvas>
+<canvas id="can" class='main_container'></canvas>
 
 <script>
-    let canvas = document.getElementById("can");
+    (function() {
+        const CANVAS = document.getElementById("can");
 
-    canvas.width = V_BORDER;
-    canvas.height = H_BORDER;
+        CANVAS.width = V_BORDER;
+        CANVAS.height = H_BORDER;
 
-    let context = canvas.getContext("2d");
+        let context = CANVAS.getContext("2d");
 
-    let ball = new Ball(50, 200, BALL_RADIUS, new Vector(20, 0));
-    let player1 = new Player(50, H_BORDER-FLOOR_HEIGHT, PLAYER_RADIUS,'q', 'e', 'w', 0, 500, PLAYER_COLOR_1, 'left');
-    let player2 = new Player(960, H_BORDER-FLOOR_HEIGHT, PLAYER_RADIUS,'left', 'right', 'up', 510, 1010, PLAYER_COLOR_2, 'right');
+        let ball = new Ball(context, BALL_START_X, BALL_START_Y, BALL_RADIUS, new Vector(BALL_START_V, 0));
+        let player1 = new Player(context, PLAYER_START_H_DELTA, H_BORDER - FLOOR_HEIGHT, PLAYER_RADIUS, 
+            'a', 'd', 'w', 0, 500, PLAYER_COLOR_1, 'left');
+        let player2 = new Player(context, V_BORDER - PLAYER_START_H_DELTA, H_BORDER - FLOOR_HEIGHT, PLAYER_RADIUS, 
+            'left', 'right', 'up', 510, 1010, PLAYER_COLOR_2, 'right');
 
-    canvas.players=[player1,player2];
+        CANVAS.players = [player1, player2];
 
-    let net = new Net(505, 100, 10, NET_COLOR);
+        let net = new Net(context, NET_X, NET_HEIGHT, NET_WIDTH, NET_COLOR);
 
-    let waves=[new Wave(context, opt3),new Wave(context, opt2),new Wave(context, opt1)];
+        let waves = [new Wave(context, opt3), new Wave(context, opt2), new Wave(context, opt1)];
 
-    // let controls1=new Controls(player1);
-    // let controls2=new Controls(player2);
+        CANVAS.addEventListener('win', function(e) {
+            CANVAS.players.forEach(function(player,index){
+                if (e.detail.winner == player.side) {
+                    player.win();
+                    ball.restart(e.detail.winner);
+                }
+            });
+        }, false);
 
+        CANVAS.addEventListener('gameover', function(e) {
+            window.location.href = `gameover.html?winner=${e.detail.winner}`;
+        }, false);
 
-    function animate(){
-        requestAnimationFrame(function() {
-            animate();
-        });
-        context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+        animate();
 
-        drawWaves(context);
-        drawFloor(context);
+        function animate() {
+            requestAnimationFrame(function() {
+                animate();
+            });
+            context.clearRect(0, 0, context.canvas.width, context.canvas.height);
 
-        // if(player1.drawCtrls){
-        //         controls1.draw(context);
-        //     }
-        // if(player2.drawCtrls){
-        //     controls2.draw(context);
-        // }
+            drawWaves(context);
+            drawFloor(context);
 
-        if (ball.collides(player1)) {
-            ball.ballBounce(player1);
-        }
-
-        if (ball.collides(player2)) {
-            ball.ballBounce(player2);
-        }
-
-        ball.move();
-        player1.move();
-        player2.move();
-
-        ball.draw(context);
-        player1.draw(context);
-        player2.draw(context);
-
-        net.draw(context);
-    }
-
-    function drawFloor(context){
-
-          context.beginPath();
-          context.moveTo(0,H_BORDER);
-          context.lineTo(0,H_BORDER-FLOOR_HEIGHT);
-        context.lineTo(V_BORDER,H_BORDER-FLOOR_HEIGHT);
-        context.lineTo(V_BORDER,H_BORDER);
-        context.fillStyle = '#7FE398';
-        context.fill();
-
-    }
-
-    function drawWaves(context){
-        for(let i=0;i<waves.length; i++){
-            waves[i].updatePoints();
-            waves[i].renderShape(context);
-        }
-    }
-
-    animate();
-
-//var event = new CustomEvent("win", {'detail': {'winner':'left'}});
-//canvas.dispatchEvent(event);
-    canvas.addEventListener('win', function(e) {
-        e.winner//'left';'right';
-        for(let i=0;i<canvas.players.length;i++){
-            console.log(e);
-            console.log(e.detail.winner);
-
-            if(e.detail.winner==canvas.players[i].side){
-                canvas.players[i].win();
+            if (ball.collidesWithPlayer(player1)) {
+                ball.playerBounce(player1);
             }
+
+            if (ball.collidesWithPlayer(player2)) {
+                ball.playerBounce(player2);
+            }
+
+            let side;
+            if (side = ball.collidesWithNet(net)) {
+                ball.netBounce(net, side);
+            }
+
+            ball.move();
+            player1.move();
+            player2.move();
+
+            ball.draw(context);
+            player1.draw(context);
+            player2.draw(context);
+
+            net.draw(context);
         }
-     }, false);
 
+        function drawFloor(context) {
 
+            context.beginPath();
+            context.moveTo(0, H_BORDER);
+            context.lineTo(0, H_BORDER - FLOOR_HEIGHT);
+            context.lineTo(V_BORDER, H_BORDER - FLOOR_HEIGHT);
+            context.lineTo(V_BORDER, H_BORDER);
+            context.fillStyle = '#7FE398';
+            context.fill();
+
+        }
+
+        function drawWaves(context) {
+            waves.forEach(function(wave,index){
+                wave.updatePoints();
+                wave.renderShape(context);
+            });
+        }
+    })();
 </script>
 
 
